@@ -71,27 +71,35 @@ func (b *Bot) handleStart(bot *gotgbot.Bot, ctx *ext.Context) error {
 	chatMember, err := bot.GetChatMember(channelID, ctx.EffectiveUser.Id, nil)
 
 	var text string
-	if err != nil || chatMember.GetStatus() == "left" || chatMember.GetStatus() == "kicked" {
-		text = "Вы не подписаны на канал. Пожалуйста, подпишитесь на наш канал, чтобы получить доступ к курсу: [приглашение](http://t.me/vibecodinghub_bot)"
+	if err != nil {
+		log.Printf("Error getting chat member: %v", err)
+		text = "Произошла ошибка при проверке подписки. Пожалуйста, попробуйте позже."
 	} else {
-		text = fmt.Sprintf("Привет, %s! 👋\n\nВы успешно подписаны на канал. Теперь вам доступны следующие функции:", ctx.EffectiveUser.FirstName)
+		status := chatMember.GetStatus()
+		log.Printf("User %d subscription status: %s", ctx.EffectiveUser.Id, status)
 
-		_, err = ctx.EffectiveMessage.Reply(bot, text, &gotgbot.SendMessageOpts{
-			ParseMode: "Markdown",
-			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
-				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{{
-					{
-						Text:         "Информация о курсе",
-						CallbackData: "course_info",
-					},
-					{
-						Text:         "Приобрести курс",
-						CallbackData: "purchase_course",
-					},
-				}},
-			},
-		})
-		return err
+		switch status {
+		case "member", "administrator", "creator":
+			text = fmt.Sprintf("Привет, %s! 👋\n\nВы успешно подписаны на канал. Теперь вам доступны следующие функции:", ctx.EffectiveUser.FirstName)
+			_, err = ctx.EffectiveMessage.Reply(bot, text, &gotgbot.SendMessageOpts{
+				ParseMode: "Markdown",
+				ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{{
+						{
+							Text:         "Информация о курсе",
+							CallbackData: "course_info",
+						},
+						{
+							Text:         "Приобрести курс",
+							CallbackData: "purchase_course",
+						},
+					}},
+				},
+			})
+			return err
+		default:
+			text = "Вы не подписаны на канал. Пожалуйста, подпишитесь на наш канал, чтобы получить доступ к курсу: [наш канал](https://t.me/vibecodinghub1)"
+		}
 	}
 
 	_, err = ctx.EffectiveMessage.Reply(bot, text, &gotgbot.SendMessageOpts{
